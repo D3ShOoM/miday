@@ -1,0 +1,3 @@
+<div class="alert alert-{% if message.level_tag == 'error' %}danger{% else %}{{ message.level_tag }}{% endif %} py-2" role="{% if message.level_tag == 'error' or message.level_tag == 'warning' %}alert{% else %}status{% endif %}">
+  {% if message.level_tag == "success" %}<i class="px-g px-g-check" aria-hidden="true"></i>{% elif message.level_tag == "error" or message.level_tag == "warning" %}<i class="px-g px-g-alert" aria-hidden="true"></i>{% endif %}{{ message }}
+</div>

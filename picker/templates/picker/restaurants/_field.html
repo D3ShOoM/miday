@@ -1,0 +1,8 @@
+<div class="{{ cols }}{% if field.errors %} has-error{% endif %}{% if field.name in changed %} is-updated{% endif %}">
+  <label class="form-label" for="{{ field.id_for_label }}">
+    {{ field.label }}{% if field.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}
+    {% if field.name in changed %}<span class="badge text-bg-success ms-1">updated</span>{% endif %}
+  </label>
+  {{ field }}
+  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+</div>

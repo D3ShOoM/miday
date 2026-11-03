@@ -1,0 +1,78 @@
+{% load static %}<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Miday{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'img/logo-day.png' %}">
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+
+  {% comment %}
+    Apply the theme before first paint so a night-mode reload does not flash
+    the day palette: the stored choice, else the device's light/dark setting.
+  {% endcomment %}
+  <script>
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem("miday-theme"); } catch (e) { /* private mode */ }
+      if (theme !== "dark" && theme !== "light") {
+        theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-bs-theme", theme);
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/icons.css' %}">
+  <link rel="stylesheet" href="{% static 'css/miday.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+<nav class="navbar navbar-expand-md px-navbar" data-bs-theme="dark">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'home' %}"><i class="px-logo" aria-hidden="true"></i>Miday</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-md-center">
+        {% url 'home' as home_url %}{% url 'poll_new' as new_poll_url %}
+        <li class="nav-item"><a class="nav-link{% if request.path == home_url %} active{% endif %}"{% if request.path == home_url %} aria-current="page"{% endif %} href="{{ home_url }}"><i class="px-g px-g-plate" aria-hidden="true"></i>Restaurants</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.path == new_poll_url %} active{% endif %}"{% if request.path == new_poll_url %} aria-current="page"{% endif %} href="{{ new_poll_url }}"><i class="px-g px-g-ballot" aria-hidden="true"></i>Start a vote</a></li>
+        <li class="nav-item ms-md-2">
+          <button type="button" id="theme-toggle" class="btn btn-sm">
+            <span class="theme-night"><i class="px-g px-g-night" aria-hidden="true"></i>Night</span>
+            <span class="theme-day"><i class="px-g px-g-day" aria-hidden="true"></i>Day</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="flex-grow-1 py-4">
+  <div class="container">
+    <div id="flash" data-live aria-live="polite">
+      {% for message in messages %}{% if "suggest" not in message.extra_tags %}
+        {% include "picker/_message.html" %}
+      {% endif %}{% endfor %}
+    </div>
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="px-footer py-3">
+  <div class="container small">
+    No login needed — anyone with the link can vote. Ratings and details come from Google Maps.
+  </div>
+</footer>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/picker.js' %}"></script>
+</body>
+</html>

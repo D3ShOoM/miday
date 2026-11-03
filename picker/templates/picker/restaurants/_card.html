@@ -1,0 +1,38 @@
+{% load humanize %}
+<article class="card r-card h-100" id="r{{ r.pk }}">
+  {% if r.photo_url %}
+    <img class="r-photo card-img-top" src="{{ r.photo_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+  {% else %}
+    <div class="r-photo r-tile {{ r.tile_class }}" aria-hidden="true">{{ r.initial }}</div>
+  {% endif %}
+  <div class="card-body d-flex flex-column gap-1">
+    <h2 class="h5 card-title mb-0" dir="auto">{{ r.name }}</h2>
+    <div class="r-meta">
+      {% if r.cuisine %}<span class="badge r-chip" dir="auto">{{ r.cuisine }}</span>{% endif %}
+      {% if r.rating is not None %}
+        <span class="r-rating"><i class="px-ico px-sm px-star" aria-hidden="true"></i> {{ r.rating }}{% if r.review_count is not None %} <span class="text-body-secondary">({{ r.review_count|intcomma }} review{{ r.review_count|pluralize }})</span>{% endif %}</span>
+      {% endif %}
+      {% if r.price_level %}{% include "picker/_price.html" %}{% endif %}
+    </div>
+    {% if r.address %}<p class="small text-body-secondary mb-0" dir="auto"><i class="px-g px-sm px-g-pin" aria-hidden="true"></i> {{ r.address }}</p>{% endif %}
+    {% if r.notes %}<p class="r-notes small mb-0" dir="auto">{{ r.notes }}</p>{% endif %}
+    {% if r.opening_hours %}
+      <details class="small">
+        <summary class="text-body-secondary"><i class="px-g px-sm px-g-clock" aria-hidden="true"></i> Opening hours</summary>
+        <div class="r-hours">{{ r.opening_hours|linebreaksbr }}</div>
+      </details>
+    {% endif %}
+  </div>
+  <div class="card-footer bg-transparent d-flex flex-wrap align-items-center gap-2">
+    {% if r.maps_url %}<a class="btn btn-sm btn-outline-primary" href="{{ r.maps_url }}" target="_blank" rel="noopener noreferrer"><i class="px-g px-g-pin" aria-hidden="true"></i>Google Maps</a>{% endif %}
+    {% if r.website %}<a class="btn btn-sm btn-link px-1" href="{{ r.website }}" target="_blank" rel="noopener noreferrer"><i class="px-g px-sm px-g-globe" aria-hidden="true"></i>Website</a>{% endif %}
+    {% if r.phone %}<a class="btn btn-sm btn-link px-1" href="tel:{{ r.phone|cut:' ' }}"><i class="px-g px-sm px-g-phone" aria-hidden="true"></i>Call</a>{% endif %}
+    <span class="ms-auto d-flex gap-1">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'restaurant_edit' r.pk %}"><i class="px-g px-g-pencil" aria-hidden="true"></i>Edit</a>
+      <form method="post" action="{% url 'restaurant_remove' r.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" aria-label="Remove {{ r.name }}"><i class="px-g px-g-trash" aria-hidden="true"></i>Remove</button>
+      </form>
+    </span>
+  </div>
+</article>

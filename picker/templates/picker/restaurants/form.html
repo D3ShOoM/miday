@@ -1,0 +1,96 @@
+{% extends "picker/base.html" %}
+{% block title %}{% if restaurant %}Edit {{ restaurant.name }}{% else %}Add a restaurant{% endif %} · Miday{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9 col-xl-8">
+    <h1 class="h3 mb-3 on-page">{% if restaurant %}Edit “<span dir="auto">{{ restaurant.name }}</span>”{% else %}Add a restaurant{% endif %}</h1>
+
+    {% if lookup %}
+      {% if lookup.ok %}
+        <div class="alert {% if lookup.source == 'link' %}alert-warning{% else %}alert-success{% endif %} py-2" role="status">
+          {% if lookup.source == "link" %}
+            Read from {{ lookup.source_label }}.
+          {% elif restaurant %}
+            Checked {{ lookup.source_label }}:
+            {% if changed %}{{ changed|length }} field{{ changed|length|pluralize:" was,s were" }} updated (highlighted). Press Save to keep the changes.{% else %}everything is already up to date.{% endif %}
+          {% else %}
+            Filled in from {{ lookup.source_label }}. Check the details and press Save.
+          {% endif %}
+          {% for note in lookup.notes %}<div class="small">{{ note }}</div>{% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-warning py-2" role="status">
+          {% for note in lookup.notes %}<div>{{ note }}</div>{% empty %}Nothing could be read from that link.{% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger py-2" role="alert">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        {% if form.duplicate %}
+          <div class="mt-2 d-flex gap-2 align-items-center">
+            {% if form.duplicate.is_removed %}
+              <button class="btn btn-sm btn-primary" form="restore-duplicate"><i class="px-g px-g-undo" aria-hidden="true"></i>Restore “<span dir="auto">{{ form.duplicate.name }}</span>”</button>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}#r{{ form.duplicate.pk }}">Show “<span dir="auto">{{ form.duplicate.name }}</span>”</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+      {% if form.duplicate.is_removed %}
+        <form id="restore-duplicate" method="post" action="{% url 'restaurant_restore' form.duplicate.pk %}">{% csrf_token %}</form>
+      {% endif %}
+    {% endif %}
+
+    <form method="post" class="card card-body r-form" novalidate>
+      {% csrf_token %}
+      {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold" for="{{ form.maps_url.id_for_label }}">{{ form.maps_url.label }}</label>
+        <div class="input-group">
+          <input type="text" name="{{ form.maps_url.html_name }}" id="{{ form.maps_url.id_for_label }}"
+                 value="{{ form.maps_url.value|default_if_none:'' }}"
+                 class="form-control{% if form.maps_url.errors %} is-invalid{% endif %}{% if 'maps_url' in changed %} is-updated{% endif %}"
+                 inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://maps.app.goo.gl/…"
+                 {% if not restaurant %}autofocus data-autofetch{% endif %}>
+          <button class="btn btn-primary" type="submit" name="action" value="fetch" formnovalidate data-fetch-button>
+            <i class="px-g px-g-search" aria-hidden="true"></i>{% if restaurant %}Refresh from Google{% else %}Fetch details{% endif %}
+          </button>
+        </div>
+        {% for error in form.maps_url.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        <div class="form-text">
+          {% if restaurant %}
+            Updates the rating, reviews, price and hours from Google. Your name and notes stay as they are.
+          {% else %}
+            In Google Maps, tap <b>Share</b> and copy the link, then paste it here. You can edit everything before saving.
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="row g-3">
+        {% include "picker/restaurants/_field.html" with field=form.name cols="col-12 col-md-8" %}
+        {% include "picker/restaurants/_field.html" with field=form.cuisine cols="col-12 col-md-4" %}
+        {% include "picker/restaurants/_field.html" with field=form.rating cols="col-6 col-md-4" %}
+        {% include "picker/restaurants/_field.html" with field=form.review_count cols="col-6 col-md-4" %}
+        {% include "picker/restaurants/_field.html" with field=form.price_level cols="col-12 col-md-4" %}
+        {% include "picker/restaurants/_field.html" with field=form.address cols="col-12" %}
+        {% include "picker/restaurants/_field.html" with field=form.phone cols="col-12 col-md-4" %}
+        {% include "picker/restaurants/_field.html" with field=form.website cols="col-12 col-md-8" %}
+        {% include "picker/restaurants/_field.html" with field=form.photo_url cols="col-12" %}
+        {% include "picker/restaurants/_field.html" with field=form.opening_hours cols="col-12 col-md-6" %}
+        {% include "picker/restaurants/_field.html" with field=form.notes cols="col-12 col-md-6" %}
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit" name="action" value="save"><i class="px-g px-g-save" aria-hidden="true"></i>Save</button>
+        <a class="btn btn-outline-secondary" href="{% url 'home' %}">Cancel</a>
+        {% if restaurant.info_fetched_at %}
+          <span class="ms-auto small text-body-secondary align-self-center">Last fetched {{ restaurant.info_fetched_at|timesince }} ago</span>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

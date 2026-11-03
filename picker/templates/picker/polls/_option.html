@@ -1,0 +1,64 @@
+{% load humanize %}{% with r=t.restaurant opt=t.option.pk %}
+<article class="card opt-card h-100" id="opt-{{ opt }}">
+  <div id="opt-{{ opt }}-live" data-live class="card-body">
+    <div class="d-flex gap-3">
+      {% if r.photo_url %}
+        <img class="opt-thumb" src="{{ r.photo_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+      {% else %}
+        <div class="opt-thumb r-tile {{ r.tile_class }}" aria-hidden="true">{{ r.initial }}</div>
+      {% endif %}
+      <div class="flex-grow-1 min-w-0">
+        <h2 class="h5 mb-1" dir="auto">{{ r.name }}{% if r.is_removed %} <span class="badge text-bg-light fw-normal">removed from list</span>{% endif %}</h2>
+        <div class="r-meta small">
+          {% if r.cuisine %}<span dir="auto">{{ r.cuisine }}</span>{% endif %}
+          {% if r.rating is not None %}<span><i class="px-ico px-sm px-star" aria-hidden="true"></i> {{ r.rating }}{% if r.review_count is not None %} <span class="text-body-secondary">({{ r.review_count|intcomma }})</span>{% endif %}</span>{% endif %}
+          {% if r.price_level %}{% include "picker/_price.html" %}{% endif %}
+          {% if r.maps_url %}<a href="{{ r.maps_url }}" id="opt-{{ opt }}-maps" target="_blank" rel="noopener noreferrer"><i class="px-g px-sm px-g-pin" aria-hidden="true"></i> Maps</a>{% endif %}
+        </div>
+        {% if r.notes %}<p class="r-notes small mb-0 mt-1" dir="auto">{{ r.notes }}</p>{% endif %}
+        {% if t.option.added_by_id %}
+          <p class="small text-body-secondary mb-0 mt-1"><i class="px-g px-sm px-g-person" aria-hidden="true"></i> Added by {% if t.option.added_by_id == request.voter_id %}you{% else %}<span dir="auto">{{ t.option.added_by.name|default:"someone" }}</span>{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'poll_option' poll.slug opt %}" class="vote-form d-flex align-items-center gap-2 mt-3" data-ajax>
+      {% csrf_token %}
+      <button type="submit" name="value" id="opt-{{ opt }}-up" value="{% if t.my_value == 1 %}0{% else %}1{% endif %}"
+              class="btn vote-btn vote-up{% if t.my_value == 1 %} is-active{% endif %}"
+              aria-pressed="{% if t.my_value == 1 %}true{% else %}false{% endif %}"{% if closed %} disabled{% endif %}>
+        <i class="px-ico px-up" aria-hidden="true"></i> <span class="vote-count">{{ t.ups }}</span>
+        <span class="visually-hidden">upvote{{ t.ups|pluralize }}{% if t.my_value == 1 %}, including yours (press to take it back){% endif %}</span>
+      </button>
+      <button type="submit" name="value" id="opt-{{ opt }}-down" value="{% if t.my_value == -1 %}0{% else %}-1{% endif %}"
+              class="btn vote-btn vote-down{% if t.my_value == -1 %} is-active{% endif %}"
+              aria-pressed="{% if t.my_value == -1 %}true{% else %}false{% endif %}"{% if closed %} disabled{% endif %}>
+        <i class="px-ico px-down" aria-hidden="true"></i> <span class="vote-count">{{ t.downs }}</span>
+        <span class="visually-hidden">downvote{{ t.downs|pluralize }}{% if t.my_value == -1 %}, including yours (press to take it back){% endif %}</span>
+      </button>
+      {% if t.my_value and not closed %}<span class="small text-body-secondary">Tap again to undo</span>{% endif %}
+    </form>
+
+    {% if t.comments %}
+      <ul class="comments list-unstyled mt-3 mb-0">
+        {% for v in t.comments %}
+          <li>
+            <span class="c-who" dir="auto">{{ v.voter.name|default:"Someone" }}</span>{% if v.voter_id == request.voter_id %} <span class="text-body-secondary">(you)</span>{% endif %}
+            {% if v.value == 1 %}<span class="px-ico px-sm px-up" role="img" aria-label="voted up"></span>{% elif v.value == -1 %}<span class="px-ico px-sm px-down" role="img" aria-label="voted down"></span>{% endif %}
+            <span class="c-text" dir="auto">{{ v.comment }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  <div class="card-footer bg-transparent">
+    <form method="post" action="{% url 'poll_option' poll.slug opt %}" class="comment-form d-flex gap-2" data-ajax>
+      {% csrf_token %}
+      <label class="visually-hidden" for="opt-{{ opt }}-comment">Your comment on {{ r.name }}</label>
+      <textarea id="opt-{{ opt }}-comment" name="comment" class="form-control form-control-sm" rows="1" maxlength="500" dir="auto"
+                placeholder="Add a comment (optional)"{% if closed %} disabled{% endif %}>{{ t.my_comment }}</textarea>
+      <button class="btn btn-sm btn-outline-primary"{% if closed %} disabled{% endif %}><i class="px-g px-g-save" aria-hidden="true"></i>Save</button>
+    </form>
+  </div>
+</article>
+{% endwith %}

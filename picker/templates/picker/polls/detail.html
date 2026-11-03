@@ -1,0 +1,146 @@
+{% extends "picker/base.html" %}
+{% block title %}{{ poll.title }} · Miday{% endblock %}
+{% block content %}
+<div id="poll" data-poll-url="{{ poll.get_absolute_url }}" data-state="{{ poll.state }}" data-refresh-ms="{{ live_refresh_ms }}">
+
+  {% if host_mismatch %}
+    <div class="alert alert-warning py-2">
+      You opened this on <b>{{ request.get_host }}</b>, but the shared link uses <b>{{ host_mismatch }}</b>.
+      <a href="{% if is_admin %}{{ manage_url }}{% else %}{{ share_url }}{% endif %}">Open it there</a>
+      so your vote{% if is_admin %} and the Close button{% endif %} carry over.
+    </div>
+  {% endif %}
+
+  {% if is_admin %}
+    <details class="card share-panel mb-3"{% if is_new %} open{% endif %}>
+      <summary class="card-header fw-semibold"><i class="px-g px-g-bubble" aria-hidden="true"></i>{% if is_new %}Your vote is ready — share this link{% else %}Share this vote{% endif %}<i class="px-g px-sm px-g-chevron px-disclosure" aria-hidden="true"></i></summary>
+      <div class="card-body">
+        <label class="form-label" for="share-link">Voting link — anyone who opens it can vote</label>
+        <div class="input-group mb-2">
+          <input id="share-link" class="form-control" value="{{ share_url }}" readonly>
+          <button class="btn btn-primary" type="button" data-copy="#share-link"><i class="px-g px-g-copy" aria-hidden="true"></i>Copy</button>
+        </div>
+        <a class="btn btn-sm btn-outline-success" target="_blank" rel="noopener noreferrer"
+           href="https://wa.me/?text={{ whatsapp_text|urlencode:'' }}"><i class="px-g px-g-bubble" aria-hidden="true"></i>Share on WhatsApp</a>
+        <hr>
+        <label class="form-label small text-body-secondary" for="manage-link">Your private manage link — open it on another device to close the vote from there</label>
+        <div class="input-group input-group-sm">
+          <input id="manage-link" class="form-control" value="{{ manage_url }}" readonly>
+          <button class="btn btn-outline-secondary" type="button" data-copy="#manage-link"><i class="px-g px-g-copy" aria-hidden="true"></i>Copy</button>
+        </div>
+      </div>
+    </details>
+  {% endif %}
+
+  <h1 class="h3 mb-3 on-page" dir="auto">{{ poll.title }}</h1>
+
+  <section id="poll-status" data-live data-closed="{{ closed|yesno:'1,0' }}" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    {% if closed %}
+      <span class="badge text-bg-secondary"><i class="px-g px-sm px-g-lock" aria-hidden="true"></i>Voting closed</span>
+    {% else %}
+      <span class="badge text-bg-success">Open</span>
+      {% if poll.closes_at %}
+        <span class="small text-body-secondary"><i class="px-g px-sm px-g-clock" aria-hidden="true"></i> closes at {{ poll.closes_at|time:"H:i" }}
+          <span data-closes-at="{{ poll.closes_at|date:'c' }}"></span></span>
+      {% endif %}
+    {% endif %}
+    <span class="small text-body-secondary"><i class="px-g px-sm px-g-people" aria-hidden="true"></i> {{ voter_count }} voter{{ voter_count|pluralize }}</span>
+    <span class="ms-auto d-flex flex-wrap gap-2">
+      {% if not is_admin %}
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="copy-link" data-copy-text="{{ share_url }}"><i class="px-g px-g-copy" aria-hidden="true"></i>Copy link</button>
+      {% else %}
+        <form method="post" action="{% url 'poll_state' poll.slug %}" data-ajax>
+          {% csrf_token %}
+          {% if closed %}
+            <button class="btn btn-sm btn-outline-primary" name="action" value="reopen" id="poll-state-button"><i class="px-g px-g-unlock" aria-hidden="true"></i>Reopen voting</button>
+          {% else %}
+            <button class="btn btn-sm btn-outline-danger" name="action" value="close" id="poll-state-button"><i class="px-g px-g-lock" aria-hidden="true"></i>Close voting</button>
+          {% endif %}
+        </form>
+      {% endif %}
+    </span>
+  </section>
+
+  <form method="post" action="{% url 'poll_name' poll.slug %}" class="name-form card card-body py-2 mb-3" data-ajax>
+    {% csrf_token %}
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <label for="voter-name" class="small text-body-secondary mb-0"><i class="px-g px-sm px-g-person" aria-hidden="true"></i> Your name <span class="d-none d-sm-inline">(optional, shown with your comments)</span></label>
+      <input id="voter-name" name="name" class="form-control form-control-sm" maxlength="40" dir="auto"
+             value="{{ voter.name|default:'' }}" autocomplete="nickname" placeholder="Anonymous">
+      <button class="btn btn-sm btn-outline-primary"><i class="px-g px-g-save" aria-hidden="true"></i>Save</button>
+    </div>
+  </form>
+
+  <section id="leaderboard" data-live class="card mb-3" aria-label="Results">
+    <div class="card-body">
+      {% if outcome.kind == "none" %}
+        <p class="lb-headline mb-0 text-body-secondary">{% if closed %}No votes were cast.{% else %}<span>No votes yet — tap <span class="px-ico px-sm px-up" role="img" aria-label="thumbs up"></span> or <span class="px-ico px-sm px-down" role="img" aria-label="thumbs down"></span> on the places below.</span>{% endif %}</p>
+      {% elif outcome.kind == "tie" %}
+        <p class="lb-headline">{% if closed %}It's a tie:{% else %}Tied:{% endif %}
+          {% for t in outcome.leaders %}<span dir="auto">{{ t.restaurant.name }}</span>{% if not forloop.last %} &amp; {% endif %}{% endfor %}</p>
+      {% else %}
+        {% with winner=outcome.leaders.0 %}
+          <p class="lb-headline"><i class="px-ico px-lg px-crown" aria-hidden="true"></i><span>{% if closed %}<span dir="auto">{{ winner.restaurant.name }}</span> wins!{% else %}Leading: <span dir="auto">{{ winner.restaurant.name }}</span>{% endif %}</span></p>
+        {% endwith %}
+      {% endif %}
+      {% if outcome.kind != "none" %}
+        <ol class="lb-list list-unstyled mb-0">
+          {% for t in ranked %}
+            <li class="lb-row">
+              <span class="lb-name" dir="auto">{{ t.restaurant.name }}</span>
+              <span class="lb-bar" aria-hidden="true">
+                <span class="lb-up" style="width: {% widthratio t.ups max_votes 100 %}%"></span><span class="lb-down" style="width: {% widthratio t.downs max_votes 100 %}%"></span>
+              </span>
+              <span class="lb-score">{% if t.score > 0 %}+{% endif %}{{ t.score }}</span>
+              <span class="visually-hidden">({{ t.ups }} up, {{ t.downs }} down)</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+    </div>
+  </section>
+
+  {# New options (suggested by voters) are appended here by the live refresh. #}
+  <div id="options" class="row row-cols-1 row-cols-md-2 g-3">
+    {% for t in tallies %}
+      <div class="col" id="opt-col-{{ t.option.pk }}">{% include "picker/polls/_option.html" %}</div>
+    {% endfor %}
+  </div>
+
+  <details id="suggest" class="card suggest-panel mt-3"{% if closed %} hidden{% endif %}>
+    <summary class="card-header fw-semibold"><i class="px-g px-g-plus" aria-hidden="true"></i>Add another restaurant to this vote<i class="px-g px-sm px-g-chevron px-disclosure" aria-hidden="true"></i></summary>
+    <div class="card-body">
+      <div id="suggest-feedback" data-live aria-live="polite">
+        {% for message in messages %}{% if "suggest" in message.extra_tags %}
+          {% include "picker/_message.html" %}
+        {% endif %}{% endfor %}
+      </div>
+      {% if options_full %}
+        <p class="mb-0 text-body-secondary">This vote already has the maximum number of restaurants.</p>
+      {% else %}
+        <form method="post" action="{% url 'poll_add' poll.slug %}" class="suggest-form mb-3" data-ajax>
+          {% csrf_token %}
+          <label class="form-label" for="suggest-existing">Pick one from the list</label>
+          <div class="input-group">
+            <select id="suggest-existing" name="restaurant" class="form-select" required>
+              <option value="">{% if addable %}Choose a restaurant…{% else %}All listed restaurants are already in this vote{% endif %}</option>
+              {% for r in addable %}<option value="{{ r.pk }}">{{ r.name }}{% if r.cuisine %} · {{ r.cuisine }}{% endif %}{% if r.rating is not None %} · ★ {{ r.rating }}{% endif %}</option>{% endfor %}
+            </select>
+            <button class="btn btn-outline-primary"><i class="px-g px-g-plus" aria-hidden="true"></i>Add to vote</button>
+          </div>
+        </form>
+        <form method="post" action="{% url 'poll_add' poll.slug %}" class="suggest-form" data-ajax>
+          {% csrf_token %}
+          <label class="form-label" for="suggest-link">…or a new place: paste its Google Maps link</label>
+          <div class="input-group">
+            <input id="suggest-link" name="maps_url" type="text" class="form-control" required
+                   inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://maps.app.goo.gl/…">
+            <button class="btn btn-primary" data-busy-label="Adding…"><i class="px-g px-g-plus" aria-hidden="true"></i>Add to vote</button>
+          </div>
+          <div class="form-text">Its details are fetched from Google Maps, and it's added to the restaurant list too.</div>
+        </form>
+      {% endif %}
+    </div>
+  </details>
+</div>
+{% endblock %}
